@@ -1,0 +1,48 @@
+{
+  "name": "@kokitcho32/next-chat",
+  "version": "1.0.1",
+  "description": "Realtime chat widget for Next.js using Firebase Realtime Database",
+  "author": "@kokitcho32",
+  "license": "MIT",
+
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+
+  "files": [
+    "dist"
+  ],
+
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+
+  "peerDependencies": {
+    "next": ">=13",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+
+  "dependencies": {
+    "firebase": "^10.0.0"
+  },
+
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+
+  "keywords": [
+    "nextjs",
+    "chat",
+    "firebase",
+    "realtime",
+    "widget",
+    "react",
+    "ecommerce"
+  ]
+}
