@@ -1,8 +1,5 @@
 
-export enum ChatRole {
-  SUPPORT = "support",
-  CLIENT = "client",
-}
+export type ChatRole = "client" | "support";
 
 export type Conversation = {
   id: string;

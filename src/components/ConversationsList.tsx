@@ -40,12 +40,12 @@ export function ConversationsList({
   useEffect(() => {
     if (!userId) return;
 
-    if (role === ChatRole.CLIENT) {
+    if (role === "client") {
       // CLIENT → uniquement ses conversations
       return listenUserConversations(db, userId, setConversations);
     }
 
-    if (role === ChatRole.SUPPORT) {
+    if (role === "support") {
       // SUPPORT → toutes les conversations
       return listenAllConversations(db, setConversations);
     }
@@ -54,7 +54,7 @@ export function ConversationsList({
   return (
     <div style={mergedStyles.container}>
       <div style={mergedStyles.title}>
-        {role === ChatRole.SUPPORT ? "Discussions clients" : "Mes discussions"}
+        {role === "support" ? "Discussions clients" : "Mes discussions"}
       </div>
 
       {conversations.length === 0 && (
