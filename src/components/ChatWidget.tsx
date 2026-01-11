@@ -1,32 +1,24 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Database } from "firebase/database";
-import { ChatMessage, ChatRole, ChatTheme } from "../chat/chat.types";
-import {
-  listenConversationMessages,
-  sendMessage,
-} from "../chat/chat.service";
+import { ChatRole, ChatTheme } from "../chat/chat.types";
+import { useConversation } from "../hooks/useConversation";
+import { useTyping } from "../hooks/useTyping";
+import { useNotifications } from "../hooks/useNotifications";
 
-/**
- * Props du widget de chat
- */
-type ChatWidgetProps = {
+// Animation optionnelle (ne force pas framer-motion dans le package)
+let MotionDiv: any = "div";
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  MotionDiv = require("framer-motion").motion.div;
+} catch {}
+
+type Props = {
   db: Database;
   conversationId: string;
   userId: string;
   role: ChatRole;
-
   theme?: ChatTheme;
-  position?: "bottom-right" | "bottom-left";
-
-  styles?: {
-    container?: React.CSSProperties;
-    header?: React.CSSProperties;
-    messages?: React.CSSProperties;
-    message?: React.CSSProperties;
-    inputContainer?: React.CSSProperties;
-    input?: React.CSSProperties;
-    button?: React.CSSProperties;
-  };
+  className?: string;
 };
 
 export function ChatWidget({
@@ -35,185 +27,103 @@ export function ChatWidget({
   userId,
   role,
   theme,
-  position = "bottom-right",
-  styles: customStyles, // récupération correcte des styles
-}: ChatWidgetProps) {
-  /**
-   * Fusion du thème par défaut avec le thème fourni
-   */
-  const mergedTheme: ChatTheme = {
-    ...defaultTheme,
-    ...theme,
-  };
-
-  /**
-   * Fusion des styles par défaut + styles custom
-   */
-  const mergedStyles = {
-    container: {
-      ...baseStyles.container,
-      ...customStyles?.container,
-      background: mergedTheme.backgroundColor,
-    },
-    header: {
-      ...baseStyles.header,
-      ...customStyles?.header,
-      background: mergedTheme.headerColor,
-    },
-    messages: {
-      ...baseStyles.messages,
-      ...customStyles?.messages,
-    },
-    message: {
-      ...baseStyles.message,
-      ...customStyles?.message,
-    },
-    inputContainer: {
-      ...baseStyles.inputContainer,
-      ...customStyles?.inputContainer,
-    },
-    input: {
-      ...baseStyles.input,
-      ...customStyles?.input,
-    },
-    button: {
-      ...baseStyles.button,
-      ...customStyles?.button,
-      background: mergedTheme.primaryColor,
-    },
-  };
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  className = "",
+}: Props) {
   const [input, setInput] = useState("");
 
-  /**
-   * Écoute en temps réel des messages
-   */
-  useEffect(() => {
-    if (!conversationId) return;
-    return listenConversationMessages(db, conversationId, setMessages);
-  }, [db, conversationId]);
+  // Messages + scroll
+  const { messages, send, bottomRef } = useConversation(
+    db,
+    conversationId,
+    userId,
+    role
+  );
 
-  /**
-   * Envoi d'un message
-   */
+  // Notifications locales (badge / title / son)
+  // Push FCM géré côté app cliente, pas ici
+  useNotifications(messages, userId);
+
+  // Typing indicator
+  const { typingUsers, startTyping, stopTyping } = useTyping(
+    db,
+    conversationId,
+    userId
+  );
+
   const handleSend = () => {
     if (!input.trim()) return;
-
-    sendMessage(db, conversationId, userId, role, input);
+    send(input);
     setInput("");
+    stopTyping();
   };
 
-  /**
-   * Sécurité : ne rien afficher si la conversation n'est pas prête
-   */
   if (!conversationId) return null;
 
   return (
-    <div style={{
-    position: "fixed" as React.CSSProperties["position"],
-    bottom: 20,
-    right: position === "bottom-right" ? 20 : undefined,
-    left: position === "bottom-left" ? 20 : undefined,
-    ...mergedStyles.container,
-  }}>
-      <div style={mergedStyles.header}>Discussion</div>
+    <MotionDiv
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`flex flex-col h-[520px] w-full sm:w-96 bg-white rounded-xl shadow-xl overflow-hidden ${className}`}
+    >
+      {/* Header */}
+      <div
+        className="px-4 py-3 font-semibold text-white"
+        style={{ backgroundColor: theme?.headerColor || "#111827" }}
+      >
+        Support
+      </div>
 
-      <div style={mergedStyles.messages}>
+      {/* Messages */}
+      <div className="flex-1 p-4 space-y-2 overflow-y-auto">
         {messages.map((msg) => {
-          const isMine = msg.authorId === userId;
+          const mine = msg.authorId === userId;
 
           return (
             <div
               key={msg.id}
+              className={`max-w-[75%] px-3 py-2 rounded-xl text-sm break-words
+                ${mine ? "ml-auto text-white" : "mr-auto text-gray-900"}`}
               style={{
-                ...mergedStyles.message,
-                alignSelf: isMine ? "flex-end" : "flex-start",
-                background: isMine
-                  ? mergedTheme.userMessageColor
-                  : mergedTheme.supportMessageColor,
-                color: isMine ? "#fff" : "#000",
+                backgroundColor: mine
+                  ? theme?.userMessageColor || "#2563eb"
+                  : theme?.supportMessageColor || "#e5e7eb",
               }}
             >
               {msg.text}
             </div>
           );
         })}
+        <div ref={bottomRef} />
       </div>
 
-      <div style={mergedStyles.inputContainer}>
+      {/* Typing */}
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-1 text-xs text-gray-500">
+          {typingUsers.join(", ")} est en train d’écrire…
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="flex border-t border-gray-200">
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Écris ton message..."
-          style={mergedStyles.input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            startTyping();
+          }}
+          onBlur={stopTyping}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          className="flex-1 px-3 py-2 text-sm outline-none"
+          placeholder="Écris ton message…"
         />
-        <button onClick={handleSend} style={mergedStyles.button}>
+        <button
+          onClick={handleSend}
+          className="px-4 text-white"
+          style={{ backgroundColor: theme?.primaryColor || "#2563eb" }}
+        >
           Envoyer
         </button>
       </div>
-    </div>
+    </MotionDiv>
   );
 }
-
-/**
- * Thème par défaut
- */
-const defaultTheme: ChatTheme = {
-  primaryColor: "#2563eb",
-  backgroundColor: "#ffffff",
-  headerColor: "#111827",
-  userMessageColor: "#2563eb",
-  supportMessageColor: "#e5e7eb",
-};
-
-/**
- * Styles par défaut
- */
-const baseStyles: Record<string, React.CSSProperties> = {
-  container: {
-    width: 320,
-    height: 420,
-    display: "flex",
-    flexDirection: "column",
-    borderRadius: 12,
-    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-    fontFamily: "sans-serif",
-  },
-  header: {
-    padding: 10,
-    color: "#fff",
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  messages: {
-    flex: 1,
-    padding: 10,
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    overflowY: "auto",
-  },
-  message: {
-    maxWidth: "75%",
-    padding: "8px 12px",
-    borderRadius: 12,
-    fontSize: 14,
-  },
-  inputContainer: {
-    display: "flex",
-    borderTop: "1px solid #e5e7eb",
-  },
-  input: {
-    flex: 1,
-    padding: 10,
-    border: "none",
-    outline: "none",
-  },
-  button: {
-    padding: "0 16px",
-    border: "none",
-    color: "#fff",
-    cursor: "pointer",
-  },
-};

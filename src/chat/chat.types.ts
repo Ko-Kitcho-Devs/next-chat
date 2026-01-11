@@ -1,10 +1,21 @@
+export enum ChatRole {
+  CLIENT = "client",
+  SUPPORT = "support",
+}
 
-export type ChatRole = "client" | "support";
+export type ChatUser = {
+  uid: string;
+  name?: string;
+  avatar?: string;
+  role: ChatRole;
+  online?: boolean;
+};
 
 export type Conversation = {
   id: string;
-  members: Record<string, true>;
-  lastMessage: string;
+  members: Record<string, boolean>;
+  supportId?: string;
+  lastMessage?: string;
   updatedAt: number;
   status: "open" | "closed";
 };
@@ -17,11 +28,10 @@ export type ChatMessage = {
   createdAt: number;
 };
 
-// Thème personnalisable du chat
 export type ChatTheme = {
-  primaryColor?: string;        // Couleur principale (boutons, messages user)
-  backgroundColor?: string;     // Fond du widget
-  headerColor?: string;         // Couleur du header
-  userMessageColor?: string;    // Message utilisateur
-  supportMessageColor?: string; // Message support
+  primaryColor: string;
+  backgroundColor: string;
+  headerColor: string;
+  userMessageColor: string;
+  supportMessageColor: string;
 };

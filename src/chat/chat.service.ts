@@ -4,26 +4,33 @@ import { ChatMessage, Conversation, ChatRole } from "./chat.types";
 /**
  * Crée (ou récupère) une conversation entre 2 utilisateurs
  */
-export function createConversation(
+export async function createConversation(
   db: Database,
-  userId: string,
-  otherUserId: string
-) {
-  const conversationRef = push(ref(db, "next-chat/conversations"));
+  clientId: string,
+  supportId: string
+): Promise<string> {
+  const convRef = push(ref(db, "next-chat/conversations"));
+  const convId = convRef.key!;
 
   const conversation: Omit<Conversation, "id"> = {
     members: {
-      [userId]: true,
-      [otherUserId]: true,
+      [clientId]: true,
+      [supportId]: true,
     },
+    supportId,
     lastMessage: "",
     updatedAt: Date.now(),
     status: "open",
   };
 
-  set(conversationRef, conversation);
+  // créer la conversation
+  await set(convRef, conversation);
 
-  return conversationRef.key!;
+  // indexer pour CHAQUE utilisateur (OBLIGATOIRE)
+  await set(ref(db, `next-chat/userConversations/${clientId}/${convId}`), true);
+  await set(ref(db, `next-chat/userConversations/${supportId}/${convId}`), true);
+
+  return convId;
 }
 
 /**
@@ -34,28 +41,57 @@ export function listenUserConversations(
   userId: string,
   callback: (conversations: Conversation[]) => void
 ) {
-  const userConvRef = ref(db, `next-chat/userConversations/${userId}`);
+  const indexRef = ref(db, `next-chat/userConversations/${userId}`);
 
-  return onValue(userConvRef, async (snapshot) => {
-    const data = snapshot.val() || {};
-    const conversationIds = Object.keys(data);
+  return onValue(indexRef, async (snapshot) => {
+    const data = snapshot.val();
 
-    if (conversationIds.length === 0) {
+    if (!data) {
       callback([]);
       return;
     }
 
-    const list: Conversation[] = [];
+    const conversationIds = Object.keys(data);
+    const conversations: Conversation[] = [];
 
-    // On récupère chaque conversation individuellement
     for (const convId of conversationIds) {
-      const convSnap = await get(ref(db, `next-chat/conversations/${convId}`));
+      const convSnap = await get(
+        ref(db, `next-chat/conversations/${convId}`)
+      );
+
       if (convSnap.exists()) {
-        list.push({ id: convId, ...convSnap.val() });
+        conversations.push({
+          id: convId,
+          ...convSnap.val(),
+        });
       }
     }
 
-    // Trier par date
+    conversations.sort((a, b) => b.updatedAt - a.updatedAt);
+    callback(conversations);
+  });
+}
+
+/**
+ * Écoute en temps réel les conversations d'un support
+ */
+export function listenSupportConversations(
+  db: Database,
+  supportId: string,
+  callback: (conversations: Conversation[]) => void
+) {
+  const refConv = ref(db, "next-chat/conversations");
+
+  return onValue(refConv, (snapshot) => {
+    const data = snapshot.val() || {};
+    const list: Conversation[] = [];
+
+    for (const [id, value] of Object.entries<any>(data)) {
+      if (value.members && value.members[supportId]) {
+        list.push({ id, ...value });
+      }
+    }
+
     list.sort((a, b) => b.updatedAt - a.updatedAt);
     callback(list);
   });
@@ -185,4 +221,35 @@ export function listenAllConversations(
     list.sort((a, b) => b.updatedAt - a.updatedAt);
     callback(list);
   });
+}
+
+
+export async function assignConversationToSupport(
+  db: Database,
+  conversationId: string,
+  supportId: string
+) {
+  // assigner le support
+  await update(ref(db, `next-chat/conversations/${conversationId}`), {
+    supportId,
+  });
+
+  // indexer la conversation pour le support
+  await set(
+    ref(db, `next-chat/userConversations/${supportId}/${conversationId}`),
+    true
+  );
+}
+
+// Sauvegarder le token FCM (dans le package)
+
+export function saveUserFCMToken(
+  db: Database,
+  userId: string,
+  token: string
+) {
+  return set(
+    ref(db, `next-chat/fcmTokens/${userId}/${token}`),
+    true
+  );
 }
