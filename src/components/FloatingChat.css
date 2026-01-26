@@ -1,0 +1,26 @@
+/* Styles for floating button and window */
+.floating-chat-button {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.floating-chat-button:active {
+  transform: scale(0.97);
+}
+
+.floating-chat-window {
+  user-select: none;
+}
+
+.floating-chat-window .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.floating-chat-window .resize-handle {
+  width: 12px;
+  height: 12px;
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  cursor: nwse-resize;
+}

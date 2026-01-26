@@ -1,3 +1,5 @@
+
+
 export enum ChatRole {
   CLIENT = "client",
   SUPPORT = "support",
@@ -9,12 +11,12 @@ export type ChatUser = {
   avatar?: string;
   role: ChatRole;
   online?: boolean;
+  supportKey?: string; // Si c'est un support, sa clé unique
 };
 
 export type Conversation = {
   id: string;
   members: Record<string, boolean>;
-  supportId?: string;
   lastMessage?: string;
   updatedAt: number;
   status: "open" | "closed";

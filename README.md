@@ -228,3 +228,4 @@ service cloud.firestore {
     }
   }
 }
+*

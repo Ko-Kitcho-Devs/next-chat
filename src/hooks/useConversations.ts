@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { Database } from "firebase/database";
 import { Conversation, ChatRole } from "../chat/chat.types";
-import {
-  listenUserConversations,
-  listenAllConversations,
-} from "../chat/chat.service";
+import { listenUserConversations } from "../chat/chat.service";
 
 export function useConversations(
   db: Database,
@@ -15,14 +12,16 @@ export function useConversations(
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!db || !userId || !role) return;
+    if (!db || !userId) return;
 
-    const unsub =
-      role === ChatRole.SUPPORT
-        ? listenAllConversations(db, setConversations)
-        : listenUserConversations(db, userId, setConversations);
+    // Même pour le support, on utilise listenUserConversations 
+    // car le support est aussi un utilisateur avec son propre index 
+    // dans next-chat/userConversations/{supportId}
+    const unsub = listenUserConversations(db, userId, (data) => {
+      setConversations(data);
+      setLoading(false);
+    });
 
-    setLoading(false);
     return () => unsub?.();
   }, [db, userId, role]);
 

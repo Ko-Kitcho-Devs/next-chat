@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 type Position =
   | "top-left"
   | "top-right"
@@ -31,7 +33,11 @@ export function MessageBadge({
   if (!show || count <= 0) return null;
 
   return (
-    <div
+    <motion.div
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      exit={{ scale: 0 }}
+      whileHover={{ scale: 1.1 }}
       className={className}
       style={{
         position: "absolute",
@@ -46,10 +52,17 @@ export function MessageBadge({
         alignItems: "center",
         justifyContent: "center",
         fontWeight: 600,
+        boxShadow: `0 4px 12px ${color}40`,
+        border: "2px solid white",
         ...positions[position],
       }}
     >
-      {count}
-    </div>
+      <motion.span
+        animate={{ scale: [1, 0.9, 1] }}
+        transition={{ duration: 0.6, repeat: Infinity }}
+      >
+        {count}
+      </motion.span>
+    </motion.div>
   );
 }

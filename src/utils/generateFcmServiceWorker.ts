@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { generateFCMSw } from "../firebase/serviceWorkerTemplate";
-import type { FirebaseChatConfig } from "../firebase/firebase";
+import type { FirebaseChatConfig } from "../firebase/firebase.types";
 
 /**
  * Génère le fichier firebase-messaging-sw.js

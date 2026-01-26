@@ -1,9 +1,16 @@
 // ================================
 // Firebase (initialisation côté app)
 // ================================
-export { initFirebase } from "./firebase/firebase";
-export type { FirebaseChatConfig } from "./firebase/firebase";
+export * from "./firebase/firebase.types";
+export * from "./firebase/firebase.env";
+export * from "./firebase/firebase.client";
 export { generateFCMSw } from "./firebase/serviceWorkerTemplate";
+export {
+  generateSupportKey_Export,
+  indexSupportKey,
+  getUidByKey,
+  registerSupport,
+} from "./firebase/supports";
 
 // ================================
 // Services (logique métier Firebase)
@@ -15,6 +22,7 @@ export {
   listenUserConversations,
   saveUserFCMToken,
 } from "./chat/chat.service";
+export { getSupportIdFromKey, startConversationWithSupportKey } from "./chat/chat.service";
 
 // ================================
 // Types
@@ -24,6 +32,7 @@ export type {
   Conversation,
   ChatRole,
   ChatTheme,
+  ChatUser,
 } from "./chat/chat.types";
 
 // ================================
@@ -31,12 +40,15 @@ export type {
 // ================================
 export { ChatWidget } from "./components/ChatWidget";
 export { ConversationsList } from "./components/ConversationsList";
-
-// UI
+export { ChatDashboard} from "./components/chatDashboard";
 export { MessageBadge } from "./components/MessageBadge";
-
-// Utils
-export { generateFcmServiceWorker } from "./utils/generateFcmServiceWorker";
+export { MessageBubble } from "./components/MessageBubble";
+export { TypingIndicator } from "./components/TypingIndicator";
+export { FloatingChatButton } from "./components/FloatingChatButton";
+export { FloatingChatWindow } from "./components/FloatingChatWindow";
+export { OnlinePresenceIndicator } from "./components/OnlinePresenceIndicator";
+export { ConversationMemberIndicator } from "./components/ConversationMemberIndicator";
+export { SupportRegister } from "./components/SupportRegister";
 
 // ================================
 // Hooks

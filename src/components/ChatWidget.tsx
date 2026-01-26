@@ -1,16 +1,9 @@
 import { useState } from "react";
 import { Database } from "firebase/database";
+import { motion } from "framer-motion";
 import { ChatRole, ChatTheme } from "../chat/chat.types";
 import { useConversation } from "../hooks/useConversation";
 import { useTyping } from "../hooks/useTyping";
-import { useNotifications } from "../hooks/useNotifications";
-
-// Animation optionnelle (ne force pas framer-motion dans le package)
-let MotionDiv: any = "div";
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  MotionDiv = require("framer-motion").motion.div;
-} catch {}
 
 type Props = {
   db: Database;
@@ -31,7 +24,6 @@ export function ChatWidget({
 }: Props) {
   const [input, setInput] = useState("");
 
-  // Messages + scroll
   const { messages, send, bottomRef } = useConversation(
     db,
     conversationId,
@@ -39,11 +31,6 @@ export function ChatWidget({
     role
   );
 
-  // Notifications locales (badge / title / son)
-  // Push FCM géré côté app cliente, pas ici
-  useNotifications(messages, userId);
-
-  // Typing indicator
   const { typingUsers, startTyping, stopTyping } = useTyping(
     db,
     conversationId,
@@ -57,73 +44,194 @@ export function ChatWidget({
     stopTyping();
   };
 
-  if (!conversationId) return null;
+  const headerColor = theme?.headerColor || "#0B5FFF";
+  const meColor = theme?.userMessageColor || "#1F6FEB";
+  const otherColor = theme?.supportMessageColor || "#8BC34A";
+
+  if (!conversationId) {
+    return (
+      <div
+        style={{
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+          borderRadius: 16,
+          borderStyle: "dashed",
+          borderWidth: 1,
+        }}
+      >
+        <p style={{ color: "#9ca3af", fontSize: 14 }}>
+          Sélectionnez une conversation
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <MotionDiv
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex flex-col h-[520px] w-full sm:w-96 bg-white rounded-xl shadow-xl overflow-hidden ${className}`}
+    <div
+      className={className}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "#ffffff",
+        borderRadius: 16,
+        boxShadow: "0 10px 30px rgba(2,6,23,0.08)",
+        borderWidth: 1,
+        overflow: "hidden",
+      }}
     >
-      {/* Header */}
+      {/* HEADER */}
       <div
-        className="px-4 py-3 font-semibold text-white"
-        style={{ backgroundColor: theme?.headerColor || "#111827" }}
+        style={{
+          padding: "16px 24px",
+          color: "#ffffff",
+          fontWeight: 600,
+          backgroundColor: headerColor,
+          flexShrink: 0,
+        }}
       >
-        Support
+        Support Chat
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 p-4 space-y-2 overflow-y-auto">
+      {/* MESSAGES */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
         {messages.map((msg) => {
-          const mine = msg.authorId === userId;
+          const isMe =
+            String(msg.authorId).trim().toLowerCase() ===
+            String(userId).trim().toLowerCase();
+
+          const rowStyle: React.CSSProperties = {
+            display: "flex",
+            justifyContent: isMe ? "flex-start" : "flex-end",
+            width: "100%",
+            paddingLeft: 8,
+            paddingRight: 8,
+          };
+
+          const bubbleStyle: React.CSSProperties = {
+            maxWidth: "min(520px, 80%)",
+            padding: "12px 16px",
+            borderRadius: 16,
+            backgroundColor: isMe ? meColor : otherColor,
+            color: isMe ? "#ffffff" : "#04251a",
+            boxShadow: "0 6px 18px rgba(2,6,23,0.06)",
+            wordBreak: "break-word",
+            fontSize: "clamp(13px, 2.2vw, 15px)",
+            lineHeight: 1.35,
+            margin: "6px 0",
+          };
+
+          if (isMe) {
+            bubbleStyle.borderTopLeftRadius = 6;
+            bubbleStyle.borderTopRightRadius = 18;
+          } else {
+            bubbleStyle.borderTopLeftRadius = 18;
+            bubbleStyle.borderTopRightRadius = 6;
+          }
 
           return (
-            <div
+            <motion.div
               key={msg.id}
-              className={`max-w-[75%] px-3 py-2 rounded-xl text-sm break-words
-                ${mine ? "ml-auto text-white" : "mr-auto text-gray-900"}`}
-              style={{
-                backgroundColor: mine
-                  ? theme?.userMessageColor || "#2563eb"
-                  : theme?.supportMessageColor || "#e5e7eb",
-              }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={rowStyle}
             >
-              {msg.text}
-            </div>
+              <div style={bubbleStyle}>
+                <div style={{ whiteSpace: "pre-wrap", fontSize: 14 }}>
+                  {msg.text}
+                </div>
+                <div
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    opacity: 0.75,
+                    textAlign: isMe ? "left" : "right",
+                  }}
+                >
+                  {new Date(msg.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
+              </div>
+            </motion.div>
           );
         })}
+
+        {typingUsers.length > 0 && (
+          <div
+            style={{
+              background: "#f1f5f9",
+              padding: "8px 12px",
+              borderRadius: 14,
+              color: "#6b7280",
+              maxWidth: 160,
+            }}
+          >
+            écrit...
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
-      {/* Typing */}
-      {typingUsers.length > 0 && (
-        <div className="px-4 py-1 text-xs text-gray-500">
-          {typingUsers.join(", ")} est en train d’écrire…
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="flex border-t border-gray-200">
+      {/* INPUT */}
+      <div
+        style={{
+          flexShrink: 0,
+          borderTop: "1px solid #e6edf3",
+          padding: 12,
+          background: "#ffffff",
+          display: "flex",
+          gap: 12,
+        }}
+      >
         <input
           value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            startTyping();
-          }}
-          onBlur={stopTyping}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          className="flex-1 px-3 py-2 text-sm outline-none"
-          placeholder="Écris ton message…"
+          onFocus={startTyping}
+          onBlur={stopTyping}
+          placeholder="Écrire un message..."
+          style={{
+            flex: 1,
+            padding: "10px 14px",
+            borderRadius: 9999,
+            border: "1px solid #e6edf3",
+            fontSize: 14,
+            outline: "none",
+          }}
         />
+
         <button
           onClick={handleSend}
-          className="px-4 text-white"
-          style={{ backgroundColor: theme?.primaryColor || "#2563eb" }}
+          disabled={!input.trim()}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 9999,
+            color: "#ffffff",
+            backgroundColor: headerColor,
+            border: "none",
+            cursor: input.trim() ? "pointer" : "not-allowed",
+            opacity: input.trim() ? 1 : 0.45,
+          }}
         >
-          Envoyer
+          ➤
         </button>
       </div>
-    </MotionDiv>
+    </div>
   );
 }
